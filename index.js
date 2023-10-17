@@ -206,3 +206,182 @@ function setSections() {
 function onChangeBranch() {
   setSections();
 }
+
+//Скрипт 7. Зміна властивостей атрибутів
+function SignPaperContractTask() {
+  debugger;
+  const stateTask = EdocsApi.getCaseTaskDataByCode("SignPaperContract").state;
+  if (
+    stateTask == "assigned" ||
+    stateTask == "inProgress" ||
+    stateTask == "completed'"
+  ) {
+    setPropertyRequired("RegDate");
+    setPropertyRequired("RegNumber");
+    setPropertyHidden("RegDate", false);
+    setPropertyHidden("RegNumber", false);
+  } else {
+    setPropertyRequired("RegDate", false);
+    setPropertyRequired("RegNumber", false);
+    setPropertyHidden("RegDate");
+    setPropertyHidden("RegNumber");
+  }
+}
+
+function RegisterContractTask() {
+  debugger;
+  const stateTask = EdocsApi.getCaseTaskDataByCode("RegisterContract").state;
+  if (
+    stateTask == "assigned" ||
+    stateTask == "inProgress" ||
+    stateTask == "completed'"
+  ) {
+    setPropertyRequired("RegDate");
+    setPropertyRequired("RegNumber");
+    setPropertyHidden("RegDate", false);
+    setPropertyHidden("RegNumber", false);
+  } else {
+    setPropertyRequired("RegDate", false);
+    setPropertyRequired("RegNumber", false);
+    setPropertyHidden("RegDate");
+    setPropertyHidden("RegNumber");
+  }
+}
+
+function onCardInitialize() {
+  SignPaperContractTask();
+  RegisterContractTask();
+}
+
+function onTaskExecuteSignPaperContract(routeStage) {
+  debugger;
+  if (routeStage.executionResult == "executed") {
+    if (
+      !EdocsApi.getAttributeValue("RegDate").value ||
+      !EdocsApi.getAttributeValue("RegNumber").value
+    )
+      throw "Внесіть номер та дату реєстрації договору";
+  }
+}
+
+function onTaskExecuteRegisterContract(routeStage) {
+  debugger;
+  if (routeStage.executionResult == "executed") {
+    if (
+      !EdocsApi.getAttributeValue("RegDate").value ||
+      !EdocsApi.getAttributeValue("RegNumber").value
+    )
+      throw "Внесіть номер та дату реєстрації договору";
+    sendComment();
+  }
+}
+
+//Скрипт 8. Інформування замовника про дату та номер реєстрації договору
+function sendComment(routeStage) {
+  debugger;
+  var orgCode = EdocsApi.getAttributeValue("OrgCode").value;
+  var orgShortName = EdocsApi.getAttributeValue("OrgShortName").value;
+  if (!orgCode || !orgShortName) {
+    return;
+  }
+  var comment = `${
+    EdocsApi.getAttributeValue("DocKind").value
+  } прийнято та зареєстровано за № ${
+    EdocsApi.getAttributeValue("RegNumber").value
+  } від ${moment(new Date(EdocsApi.getAttributeValue("RegDate").value)).format(
+    "DD.MM.YYYY"
+  )}`;
+  var methodData = {
+    extSysDocId: CurrentDocument.id,
+    eventType: "CommentAdded",
+    comment: comment,
+    partyCode: orgCode,
+    userTitle: CurrentUser.name,
+    partyName: orgShortName,
+    occuredAt: new Date(),
+  };
+  EdocsApi.runExternalFunction(
+    "ESIGN1",
+    "integration/processEvent",
+    methodData
+  );
+}
+
+//Скрипт 9. Передача договору на підписання в зовнішню систему
+function setDataForESIGN() {
+  debugger;
+  //var registrationDate = EdocsApi.getAttributeValue("RegDate").value;
+  //var registrationNumber = EdocsApi.getAttributeValue("RegNumber").value;
+  var caseType = EdocsApi.getAttributeValue("DocType").value;
+  var caseKind = EdocsApi.getAttributeValue("DocKind").text;
+  var name = "";
+  if (caseKind) {
+    name += caseKind;
+  } else {
+    name += caseType;
+  }
+  name += `№ ${CurrentDocument.id}`;
+
+  doc = {
+    DocName: name,
+    extSysDocId: CurrentDocument.id,
+    ExtSysDocVersion: CurrentDocument.version,
+    docType: "Contract",
+    docDate: registrationDate,
+    docNum: registrationNumber,
+    File: "",
+    parties: [
+      {
+        taskType: "ToSign",
+        taskState: "Done",
+        legalEntityCode: EdocsApi.getAttributeValue("OrgCode").value,
+        contactPersonEmail: EdocsApi.getAttributeValue("OrgRPEmail").value,
+        signatures: [],
+      },
+      {
+        taskType: "ToSign",
+        taskState: "NotAssigned",
+        legalEntityCode: EdocsApi.getAttributeValue("ContractorCode").value,
+        contactPersonEmail:
+          EdocsApi.getAttributeValue("ContractorRPEmail").value,
+        expectedSignatures: [],
+      },
+    ],
+    additionalAttributes: [
+      {
+        code: "docDate",
+        type: "dateTime",
+        value: registrationDate,
+      },
+      {
+        code: "docNum",
+        type: "string",
+        value: registrationNumber,
+      },
+    ],
+    sendingSettings: {
+      attachFiles: "fixed", //, можна також встановлювати 'firstOnly' - Лише файл із першої зафіксованої вкладки(Головний файл), або 'all' - всі файли, 'fixed' - усі зафіксовані
+      attachSignatures: "signatureAndStamp", // -'signatureAndStamp'Типи “Підпис” або “Печатка”, можна також встановити 'all' - усі типи цифрових підписів
+    },
+  };
+  EdocsApi.setAttributeValue({ code: "JSON", value: JSON.stringify(doc) });
+}
+
+function onTaskExecuteSendOutDoc(routeStage) {
+  debugger;
+  if (routeStage.executionResult == "rejected") {
+    return;
+  }
+  setDataForESIGN();
+  var idnumber = EdocsApi.getAttributeValue("DocId");
+  var methodData = {
+    extSysDocId: idnumber.value,
+  };
+
+  routeStage.externalAPIExecutingParams = {
+    externalSystemCode: "ESIGN1", // код зовнішньої системи
+    externalSystemMethod: "integration/importDoc", // метод зовнішньої системи
+    data: methodData, // дані, що очікує зовнішня система для заданого методу
+    executeAsync: true, // виконувати завдання асинхронно
+  };
+}
