@@ -52,6 +52,7 @@ function onSearchBranch(searchRequest) {
 
 //Скрипт 2. Вирахування ПДВ
 function onChangeContract() {
+  debugger;
   var VATpercentage = 0;
   var attrVATAmount = EdocsApi.getAttributeValue("ContractVATAmount");
   var attrVATpercentage = EdocsApi.getAttributeValue("ContractVATPercent");
@@ -88,13 +89,14 @@ function onChangeContract() {
   EdocsApi.setAttributeValue(attrAmountOutVAT);
 }
 
-function onChangeVATpercentage() {
+function onChangeContractVATPercent() {
   onChangeContract();
 }
 
 //Скрипт 3. Заповнення значення поля суми договору прописом
 function onChangeContractAmount() {
   setAmountDescription();
+  onChangeContract();
 }
 
 function setAmountDescription() {
@@ -102,12 +104,12 @@ function setAmountDescription() {
   var ContractAmount = EdocsApi.getAttributeValue("ContractAmount").value;
 
   if (ContractAmount) {
-    setValueAttr(
+    setAttrValue(
       "VATAmmountDescription",
       EdocsApi.numberToCurrency(ContractAmount, "uk", "UAH")
     );
   } else {
-    setValueAttr("VATAmmountDescription", "");
+    setAttrValue("VATAmmountDescription", "");
   }
 }
 
@@ -115,42 +117,60 @@ function setAmountDescription() {
 function setAdditionalSignatory() {
   debugger;
 
-  var data = EdocsApi.getContractorData(
-    EdocsApi.getAttributeValue("OrganizationId").value
-  );
-  if (EdocsApi.getAttributeValue("OrgAgentSurname2").value && data) {
-    setValueAttr(
-      "OrgAgent2",
-      data.authorisedPersons.find(
-        (x) =>
-          x.fullName.replace(",", ".") ==
-          EdocsApi.getAttributeValue("OrgAgentSurname2").text
-      ).nameGenitive
-    );
-    setValueAttr(
-      "OrgAgentPosition2",
-      data.authorisedPersons.find(
-        (x) => x.fullName == EdocsApi.getAttributeValue("OrgAgentSurname2").text
-      ).positionGenitive
-    );
-    setValueAttr(
-      "PositionOrgAgent2",
-      data.authorisedPersons.find(
-        (x) => x.fullName == EdocsApi.getAttributeValue("OrgAgentSurname2").text
-      ).position
-    );
-    setValueAttr(
-      "ActsOnBasisOrg2",
-      data.authorisedPersons.find(
-        (x) => x.fullName == EdocsApi.getAttributeValue("OrgAgentSurname2").text
-      ).actingUnderThe
-    );
-  } else {
-    setValueAttr("OrgAgent2", "");
-    setValueAttr("OrgAgentPosition2", "");
-    setValueAttr("PositionOrgAgent2", "");
-    setValueAttr("ActsOnBasisOrg2", "");
-    EdocsApi.message("Внесіть коректного підписанта");
+  const attrOrgAgentSurname2 = EdocsApi.getAttributeValue("OrgAgentSurname2");
+  if (attrOrgAgentSurname2.value) {
+    const OrganizationId = EdocsApi.getAttributeValue("OrganizationId").value;
+    const data = EdocsApi.getContractorData(OrganizationId);
+    if (data) {
+      if (
+        data.authorisedPersons.find(
+          (x) =>
+            x.fullName.replace(",", ".") ==
+            EdocsApi.getAttributeValue("OrgAgentSurname2").text
+        )
+      ) {
+        setValueAttr(
+          "OrgAgent2",
+          data.authorisedPersons.find(
+            (x) =>
+              x.fullName.replace(",", ".") ==
+              EdocsApi.getAttributeValue("OrgAgentSurname2").text
+          )?.nameGenitive
+        );
+        setValueAttr(
+          "OrgAgentPosition2",
+          data.authorisedPersons.find(
+            (x) =>
+              x.fullName == EdocsApi.getAttributeValue("OrgAgentSurname2").text
+          )?.positionGenitive
+        );
+        setValueAttr(
+          "PositionOrgAgent2",
+          data.authorisedPersons.find(
+            (x) =>
+              x.fullName == EdocsApi.getAttributeValue("OrgAgentSurname2").text
+          )?.position
+        );
+        setValueAttr(
+          "ActsOnBasisOrg2",
+          data.authorisedPersons.find(
+            (x) =>
+              x.fullName == EdocsApi.getAttributeValue("OrgAgentSurname2").text
+          )?.actingUnderThe
+        );
+        setAttrValue(
+          "InitialAgent2",
+          formattingOfInitials(attrOrgAgentSurname2.text)
+        );
+      } else {
+        EdocsApi.message("Введіть коректного підписанта!");
+        setValueAttr("OrgAgent2", "");
+        setValueAttr("OrgAgentPosition2", "");
+        setValueAttr("PositionOrgAgent2", "");
+        setValueAttr("ActsOnBasisOrg2", "");
+        setAttrValue("InitialAgent2", "");
+      }
+    }
   }
 }
 
@@ -210,7 +230,9 @@ function onChangeBranch() {
 //Скрипт 7. Зміна властивостей атрибутів
 function SignPaperContractTask() {
   debugger;
-  const stateTask = EdocsApi.getCaseTaskDataByCode("SignPaperContract").state;
+  var stateTask = EdocsApi.getCaseTaskDataByCode(
+    "SignPaperContract" + EdocsApi.getAttributeValue("Sections").value
+  ).state;
   if (
     stateTask == "assigned" ||
     stateTask == "inProgress" ||
@@ -230,7 +252,9 @@ function SignPaperContractTask() {
 
 function RegisterContractTask() {
   debugger;
-  const stateTask = EdocsApi.getCaseTaskDataByCode("RegisterContract").state;
+  var stateTask = EdocsApi.getCaseTaskDataByCode(
+    "RegisterContract" + EdocsApi.getAttributeValue("Sections").value
+  ).state;
   if (
     stateTask == "assigned" ||
     stateTask == "inProgress" ||
@@ -327,8 +351,8 @@ function setDataForESIGN() {
     extSysDocId: CurrentDocument.id,
     ExtSysDocVersion: CurrentDocument.version,
     docType: "Contract",
-    docDate: registrationDate,
-    docNum: registrationNumber,
+    docDate: "", //registrationDate,
+    docNum: "", //registrationNumber,
     File: "",
     parties: [
       {
@@ -347,18 +371,7 @@ function setDataForESIGN() {
         expectedSignatures: [],
       },
     ],
-    additionalAttributes: [
-      {
-        code: "docDate",
-        type: "dateTime",
-        value: registrationDate,
-      },
-      {
-        code: "docNum",
-        type: "string",
-        value: registrationNumber,
-      },
-    ],
+    additionalAttributes: [],
     sendingSettings: {
       attachFiles: "fixed", //, можна також встановлювати 'firstOnly' - Лише файл із першої зафіксованої вкладки(Головний файл), або 'all' - всі файли, 'fixed' - усі зафіксовані
       attachSignatures: "signatureAndStamp", // -'signatureAndStamp'Типи “Підпис” або “Печатка”, можна також встановити 'all' - усі типи цифрових підписів
