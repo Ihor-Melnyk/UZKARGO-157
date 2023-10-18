@@ -334,8 +334,6 @@ function sendComment(routeStage) {
 //Скрипт 9. Передача договору на підписання в зовнішню систему
 function setDataForESIGN() {
   debugger;
-  //var registrationDate = EdocsApi.getAttributeValue("RegDate").value;
-  //var registrationNumber = EdocsApi.getAttributeValue("RegNumber").value;
   var caseType = EdocsApi.getAttributeValue("DocType").value;
   var caseKind = EdocsApi.getAttributeValue("DocKind").text;
   var name = "";
@@ -351,8 +349,6 @@ function setDataForESIGN() {
     extSysDocId: CurrentDocument.id,
     ExtSysDocVersion: CurrentDocument.version,
     docType: "Contract",
-    docDate: "", //registrationDate,
-    docNum: "", //registrationNumber,
     File: "",
     parties: [
       {
