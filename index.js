@@ -242,6 +242,10 @@ function onChangeBranch() {
   setSections();
 }
 
+function onBeforeCardSave() {
+  setSections();
+}
+
 //Скрипт 7. Зміна властивостей атрибутів
 function SignPaperContractTask() {
   debugger;
