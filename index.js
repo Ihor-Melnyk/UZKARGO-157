@@ -129,7 +129,7 @@ function setAdditionalSignatory() {
             EdocsApi.getAttributeValue("OrgAgentSurname2").text
         )
       ) {
-        setValueAttr(
+        setAttrValue(
           "OrgAgent2",
           data.authorisedPersons.find(
             (x) =>
@@ -137,21 +137,21 @@ function setAdditionalSignatory() {
               EdocsApi.getAttributeValue("OrgAgentSurname2").text
           )?.nameGenitive
         );
-        setValueAttr(
+        setAttrValue(
           "OrgAgentPosition2",
           data.authorisedPersons.find(
             (x) =>
               x.fullName == EdocsApi.getAttributeValue("OrgAgentSurname2").text
           )?.positionGenitive
         );
-        setValueAttr(
+        setAttrValue(
           "PositionOrgAgent2",
           data.authorisedPersons.find(
             (x) =>
               x.fullName == EdocsApi.getAttributeValue("OrgAgentSurname2").text
           )?.position
         );
-        setValueAttr(
+        setAttrValue(
           "ActsOnBasisOrg2",
           data.authorisedPersons.find(
             (x) =>
@@ -164,10 +164,10 @@ function setAdditionalSignatory() {
         );
       } else {
         EdocsApi.message("Введіть коректного підписанта!");
-        setValueAttr("OrgAgent2", "");
-        setValueAttr("OrgAgentPosition2", "");
-        setValueAttr("PositionOrgAgent2", "");
-        setValueAttr("ActsOnBasisOrg2", "");
+        setAttrValue("OrgAgent2", "");
+        setAttrValue("OrgAgentPosition2", "");
+        setAttrValue("PositionOrgAgent2", "");
+        setAttrValue("ActsOnBasisOrg2", "");
         setAttrValue("InitialAgent2", "");
       }
     }
@@ -208,6 +208,21 @@ function formattingOfInitials(fullName) {
   arrNew.push(arr[0].toUpperCase());
   return arrNew.join(" ");
 }
+//Заповнення ініціалів підписантів Замовника
+function onChangeAgentSurnameContractor() {
+  debugger;
+  var AgentSurnameContractor = EdocsApi.getAttributeValue(
+    "AgentSurnameContractor"
+  ).value;
+  if (AgentSurnameContractor) {
+    setAttrValue(
+      "ContractAgentSurname",
+      formattingOfInitials(AgentSurnameContractor)
+    );
+  } else {
+    setAttrValue("ContractAgentSurname", "");
+  }
+}
 
 // Скрипт 6. Визначення ролі за розрізом
 function setSections() {
@@ -232,11 +247,11 @@ function SignPaperContractTask() {
   debugger;
   var stateTask = EdocsApi.getCaseTaskDataByCode(
     "SignPaperContract" + EdocsApi.getAttributeValue("Sections").value
-  ).state;
+  )?.state;
   if (
     stateTask == "assigned" ||
     stateTask == "inProgress" ||
-    stateTask == "completed'"
+    stateTask == "completed"
   ) {
     setPropertyRequired("RegDate");
     setPropertyRequired("RegNumber");
@@ -254,11 +269,11 @@ function RegisterContractTask() {
   debugger;
   var stateTask = EdocsApi.getCaseTaskDataByCode(
     "RegisterContract" + EdocsApi.getAttributeValue("Sections").value
-  ).state;
+  )?.state;
   if (
     stateTask == "assigned" ||
     stateTask == "inProgress" ||
-    stateTask == "completed'"
+    stateTask == "completed"
   ) {
     setPropertyRequired("RegDate");
     setPropertyRequired("RegNumber");
@@ -309,7 +324,7 @@ function sendComment(routeStage) {
     return;
   }
   var comment = `${
-    EdocsApi.getAttributeValue("DocKind").value
+    EdocsApi.getAttributeValue("DocKind").text
   } прийнято та зареєстровано за № ${
     EdocsApi.getAttributeValue("RegNumber").value
   } від ${moment(new Date(EdocsApi.getAttributeValue("RegDate").value)).format(
@@ -348,7 +363,7 @@ function setDataForESIGN() {
     DocName: name,
     extSysDocId: CurrentDocument.id,
     ExtSysDocVersion: CurrentDocument.version,
-    docType: "Contract",
+    docType: "ContractCommission",
     File: "",
     parties: [
       {
